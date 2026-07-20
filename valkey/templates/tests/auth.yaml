@@ -21,7 +21,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: test-auth
-      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      image: {{ include "valkey.image" . | quote }}
       command:
         - sh
         - -c
@@ -97,7 +97,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: test-auth
-      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      image: {{ include "valkey.image" . | quote }}
       command:
         - sh
         - -c
@@ -135,7 +135,7 @@ spec:
   volumes:
     - name: valkey-users-secret
       secret:
-        secretName: {{ .Values.auth.usersExistingSecret }}
+        secretName: {{ tpl .Values.auth.usersExistingSecret . }}
     {{- if .Values.tls.enabled }}
     - name: valkey-tls
       secret:

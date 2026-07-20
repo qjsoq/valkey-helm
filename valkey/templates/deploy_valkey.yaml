@@ -9,6 +9,10 @@ metadata:
   name: {{ include "valkey.fullname" . }}
   labels:
     {{- include "valkey.labels" . | nindent 4 }}
+  {{- with .Values.workloadAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: 1
   strategy:
@@ -40,6 +44,9 @@ spec:
       serviceAccountName: {{ include "valkey.serviceAccountName" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -106,26 +113,15 @@ spec:
             - name: {{ $key }}
               value: "{{ $val }}"
             {{- end }}
-            - name: VALKEY_LOGLEVEL
+            - name: VALKEY_LOG_LEVEL
               value: "{{ .Values.valkeyLogLevel }}"
           ports:
             - name: tcp
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          startupProbe:
-            exec:
-              {{- if .Values.tls.enabled }}
-              command: [ "sh", "-c", "valkey-cli --cacert /tls/{{ .Values.tls.caPublicKey }} --tls ping" ]
-              {{- else }}
-              command: [ "sh", "-c", "valkey-cli ping" ]
-              {{- end }}
-          livenessProbe:
-            exec:
-              {{- if .Values.tls.enabled }}
-              command: [ "sh", "-c", "valkey-cli --cacert /tls/{{ .Values.tls.caPublicKey }} --tls ping" ]
-              {{- else }}
-              command: [ "sh", "-c", "valkey-cli ping" ]
-              {{- end }}
+          {{- with (include "valkey.healthProbes" .) }}
+          {{- . | nindent 10 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -193,11 +189,28 @@ spec:
           env:
             - name: REDIS_ALIAS
               value: {{ include "valkey.fullname" . }}
+            {{- if .Values.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.auth.usersExistingSecret }}
+                  {{- $defaultUser := index .Values.auth.aclUsers "default" | default dict }}
+                  {{- $passwordKey := $defaultUser.passwordKey | default "default" }}
+                  name: {{ tpl .Values.auth.usersExistingSecret . }}
+                  key: {{ $passwordKey }}
+                  {{- else }}
+                  name: {{ include "valkey.fullname" . }}-auth
+                  key: default-password
+                  {{- end }}
+            {{- end }}
             {{- range $key, $val := .Values.metrics.exporter.extraEnvs }}
             - name: {{ $key }}
               value: "{{ $val }}"
             {{- end }}
         {{- end }}
+      {{- with .Values.extraContainers }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
       volumes:
         - name: scripts
           configMap:
@@ -243,7 +256,7 @@ spec:
         {{- if .Values.auth.usersExistingSecret }}
         - name: valkey-users-secret
           secret:
-            secretName: {{ .Values.auth.usersExistingSecret }}
+            secretName: {{ tpl .Values.auth.usersExistingSecret . }}
             defaultMode: 0400
         {{- end }}
         {{- if or (include "valkey.hasInlinePasswords" . | eq "true") .Values.auth.aclConfig }}

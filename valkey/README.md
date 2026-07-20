@@ -12,7 +12,7 @@ A Helm chart for Kubernetes
 | ---- | --- |
 | raven | [https://github.com/mk-raven] |
 | sgissi | [https://github.com/sgissi] |
-
+| Bloodraven21 | [https://github.com/Bloodraven21] |
 ## Source Code
 
 * <https://github.com/valkey-io/valkey-helm.git>
@@ -39,6 +39,16 @@ Deploy Valkey with master-replica architecture for read scaling and data redunda
 ```bash
 helm install valkey valkey/valkey --set replica.enabled=true --set replica.persistence.size=5Gi
 ```
+
+**IMPORTANT**
+
+## Cluster Mode
+
+This chart does not and will not support **Valkey cluster** mode. Managing a clustered topology is fundamentally different from standalone or replicated deployments, and the operational requirements go well beyond what this chart is designed to handle.
+
+For cluster mode, a separate chart is being developed that uses the valkey-operator to deploy and manage clusters. The operator must be installed first.
+
+To follow progress or get involved, see the [weekly meeting wiki](https://github.com/valkey-io/valkey-operator/wiki/Weekly-meeting). 
 
 **Services:**
 
@@ -83,7 +93,7 @@ dataStorage:
 
 ### Replication Storage
 
-Persistent storage is **mandatory** in replication mode. Without it, the primary might comes up with an empty dataset after a restart, all replicas will synchronize with the empty primary and lose their data. See [Valkey Replication Safety](https://valkey.io/topics/replication/#safety-of-replication-when-primary-has-persistence-turned-off) for details.
+Persistent storage is **mandatory** in replication mode. Without it, the primary might come up with an empty dataset after a restart, all replicas will synchronize with the empty primary and lose their data. See [Valkey Replication Safety](https://valkey.io/topics/replication/#safety-of-replication-when-primary-has-persistence-turned-off) for details.
 
 ```yaml
 replica:
@@ -196,6 +206,26 @@ metrics:
     enabled: true
 ```
 
+## PodDisruptionBudget
+
+A PodDisruptionBudget helps keep enough read-replicas available during voluntary disruptions like node drains or rolling updates.
+
+**Enable PDB (only works in replicated mode):**
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1  # Allow at most 1 pod to be unavailable
+```
+
+**Or use minAvailable to guarantee a specific number of replicas:**
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2  # Always keep at least 2 replicas running
+```
+
 ## TLS
 
 This chart supports TLS encryption for Valkey connections.
@@ -250,6 +280,12 @@ tls:
 | image.tag | string | `""` |  |
 | imagePullSecrets | list | `[]` |  |
 | initResources | object | `{}` |  |
+| livenessProbe.customProbe | object | `{}` | Full probe spec to replace the default valkey-cli ping handler and timing |
+| livenessProbe.enabled | bool | `true` |  |
+| livenessProbe.failureThreshold | int | `3` |  |
+| livenessProbe.initialDelaySeconds | int | `0` |  |
+| livenessProbe.periodSeconds | int | `10` |  |
+| livenessProbe.timeoutSeconds | int | `1` |  |
 | metrics.enabled | bool | `false` |  |
 | metrics.exporter.args | list | `[]` |  |
 | metrics.exporter.command | list | `[]` |  |
@@ -303,10 +339,22 @@ tls:
 | podAnnotations | object | `{}` |  |
 | podLabels | object | `{}` |  |
 | commonLabels | object | `{}` |  |
+| podDisruptionBudget.enabled | bool | `false` |  |
+| podDisruptionBudget.minAvailable | int or string | `null` | Minimum pods available during disruptions |
+| podDisruptionBudget.maxUnavailable | int or string | `1` | Maximum pods unavailable during disruptions |
+| podDisruptionBudget.unhealthyPodEvictionPolicy | string | `null` | Policy for evicting unhealthy pods |
 | podSecurityContext.fsGroup | int | `1000` |  |
 | podSecurityContext.runAsGroup | int | `1000` |  |
 | podSecurityContext.runAsUser | int | `1000` |  |
 | priorityClassName | string | `""` |  |
+| runtimeClassName | string | `""` | RuntimeClassName for the pods (e.g. `gvisor`, `kata-containers`); empty uses the cluster default runtime |
+| readinessProbe.customProbe | object | `{}` | Full probe spec to replace the default valkey-cli ping handler and timing |
+| readinessProbe.enabled | bool | `false` | Opt-in; the Valkey container had no readiness probe before |
+| readinessProbe.failureThreshold | int | `3` |  |
+| readinessProbe.initialDelaySeconds | int | `0` |  |
+| readinessProbe.periodSeconds | int | `10` |  |
+| readinessProbe.successThreshold | int | `1` |  |
+| readinessProbe.timeoutSeconds | int | `1` |  |
 | replica.enabled | bool | `false` |  |
 | replica.replicas | int | `2` |  |
 | replica.replicationUser | string | `"default"` |  |
@@ -340,6 +388,12 @@ tls:
 | serviceAccount.automount | bool | `false` |  |
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `""` |  |
+| startupProbe.customProbe | object | `{}` | Full probe spec to replace the default valkey-cli ping handler and timing |
+| startupProbe.enabled | bool | `true` |  |
+| startupProbe.failureThreshold | int | `3` |  |
+| startupProbe.initialDelaySeconds | int | `0` |  |
+| startupProbe.periodSeconds | int | `10` |  |
+| startupProbe.timeoutSeconds | int | `1` |  |
 | tls.caPublicKey | string | `"ca.crt"` |  |
 | tls.dhParamKey | string | `""` |  |
 | tls.enabled | bool | `false` |  |
@@ -351,3 +405,4 @@ tls:
 | topologySpreadConstraints | list | `[]` |  |
 | valkeyConfig | string | `""` |  |
 | valkeyLogLevel | string | `"notice"` |  |
+| workloadAnnotations | object | `{}` |  |

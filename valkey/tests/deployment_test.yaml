@@ -69,6 +69,25 @@ tests:
             mountPath: /valkey-users-secret
             readOnly: true
 
+  - it: should render users-secret volume with templated usersExistingSecret
+    set:
+      auth.enabled: true
+      auth.usersExistingSecret: "my-custom-secret-{{ .Release.Name }}"
+      auth.aclUsers:
+        default:
+          permissions: "~* &* +@all"
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: valkey-users-secret
+            secret:
+              secretName: my-custom-secret-RELEASE-NAME
+              defaultMode: 0400
+
   - it: should have both volumes with mixed passwords
     set:
       auth.enabled: true
@@ -245,6 +264,19 @@ tests:
           value:
             - name: globalregistrykey
             - name: localregistrykey
+          
+  - it: should include extra containers from overlay
+    set:
+      extraContainers:
+        - name: nginx-sidecar
+          image: registry.hub.docker.com/nginx/nginx:stable-alpine
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: nginx-sidecar
 
   - it: should render extraVolumes
     set:
@@ -322,3 +354,138 @@ tests:
             name: extra-config
             mountPath: /extra-config
             readOnly: true
+
+  - it: should include workload annotations when provided
+    set:
+      workloadAnnotations:
+        example.com/annotation: "test-value"
+        custom.annotation: "custom-value"
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.annotations["example.com/annotation"]
+          value: "test-value"
+      - equal:
+          path: metadata.annotations["custom.annotation"]
+          value: "custom-value"
+
+  - it: should not have REDIS_PASSWORD env in metrics exporter when auth is disabled
+    set:
+      auth.enabled: false
+      metrics.enabled: true
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - notContains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: REDIS_PASSWORD
+
+  - it: should set REDIS_PASSWORD from generated secret in metrics exporter when auth is enabled
+    set:
+      auth.enabled: true
+      auth.aclUsers:
+        default:
+          permissions: "~* &* +@all"
+          password: "default-password"
+      metrics.enabled: true
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-valkey-auth
+                key: default-password
+
+  - it: should set REDIS_PASSWORD from existing secret in metrics exporter when usersExistingSecret is set
+    set:
+      auth.enabled: true
+      auth.usersExistingSecret: "my-custom-secret"
+      auth.aclUsers:
+        default:
+          permissions: "~* &* +@all"
+      metrics.enabled: true
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: my-custom-secret
+                key: default
+
+  - it: should render templated usersExistingSecret in metrics exporter
+    set:
+      auth.enabled: true
+      auth.usersExistingSecret: "my-custom-secret-{{ .Release.Name }}"
+      auth.aclUsers:
+        default:
+          permissions: "~* &* +@all"
+      metrics.enabled: true
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: my-custom-secret-RELEASE-NAME
+                key: default
+
+  - it: should set REDIS_PASSWORD using custom passwordKey in metrics exporter when usersExistingSecret is set
+    set:
+      auth.enabled: true
+      auth.usersExistingSecret: "my-custom-secret"
+      auth.aclUsers:
+        default:
+          permissions: "~* &* +@all"
+          passwordKey: "my-password-key"
+      metrics.enabled: true
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: my-custom-secret
+                key: my-password-key
+
+  - it: should not set runtimeClassName when empty
+    set:
+      runtimeClassName: ""
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - notExists:
+          path: spec.template.spec.runtimeClassName
+
+  - it: should set runtimeClassName when provided
+    set:
+      runtimeClassName: "gvisor"
+    template: templates/deploy_valkey.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.runtimeClassName
+          value: "gvisor"
