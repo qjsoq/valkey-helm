@@ -1,5 +1,6 @@
-# Number of Valkey pods to run
-# For cluster mode, the number has to be more than 6
+# Number of Valkey pods to run.
+# Cluster mode requires at least 6 (3 primaries + 3 replicas).
+# Enforced by values.schema.json; lower values are rejected at install time.
 replicaCount: 6
 
 global:

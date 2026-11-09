@@ -104,12 +104,16 @@
                     "type": "string"
                 },
                 "repository": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "tag": {
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "repository"
+            ]
         },
         "imagePullSecrets": {
             "type": "array"
@@ -152,12 +156,18 @@
                             "type": "string"
                         },
                         "repository": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                         },
                         "tag": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                         }
-                    }
+                    },
+                    "required": [
+                        "repository",
+                        "tag"
+                    ]
                 },
                 "resources": {
                     "type": "object"
@@ -222,7 +232,9 @@
             }
         },
         "replicaCount": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 6,
+            "description": "Number of Valkey pods. Cluster mode requires at least 6 (3 primaries + 3 replicas)."
         },
         "resources": {
             "type": "object"

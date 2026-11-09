@@ -33,12 +33,6 @@ tests:
           path: data["init-cluster.sh"]
           pattern: "ping.*PONG"
 
-  - it: should skip cluster init for single-node deployments
-    asserts:
-      - matchRegex:
-          path: data["init-cluster.sh"]
-          pattern: "Single node deployment"
-
   - it: should handle auth via VALKEYCLI_AUTH env var
     asserts:
       - matchRegex:

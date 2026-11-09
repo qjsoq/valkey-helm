@@ -72,21 +72,12 @@ tests:
       - exists:
           path: spec.template.metadata.annotations["checksum/initconfig"]
 
-  - it: should add cluster-announce-ip to startup args when replicaCount >= 6
+  - it: should always add cluster-announce-ip to startup args
     template: templates/deploy_valkey.yaml
     set:
       replicaCount: 6
     asserts:
       - matchRegex:
-          path: spec.template.spec.containers[0].args[0]
-          pattern: "cluster-announce-ip"
-
-  - it: should not add cluster-announce-ip when replicaCount < 6
-    template: templates/deploy_valkey.yaml
-    set:
-      replicaCount: 3
-    asserts:
-      - notMatchRegex:
           path: spec.template.spec.containers[0].args[0]
           pattern: "cluster-announce-ip"
 
@@ -586,7 +577,7 @@ tests:
             containerPort: 26379
             protocol: TCP
 
-  - it: should mount valkey-config volume when replicaCount > 1
+  - it: should always mount the valkey-config volume
     template: templates/deploy_valkey.yaml
     asserts:
       - contains:

@@ -1,6 +1,6 @@
 # valkey-cluster
 
-![Version: 0.10.0](https://img.shields.io/badge/Version-0.10.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 9.1.0](https://img.shields.io/badge/AppVersion-9.1.0-informational?style=flat-square)
+![Version: 0.11.0](https://img.shields.io/badge/Version-0.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 9.1.0](https://img.shields.io/badge/AppVersion-9.1.0-informational?style=flat-square)
 
 A Helm chart for Kubernetes to start valkey in cluster mode with 3 master and 3 replicas
 
@@ -9,7 +9,7 @@ A Helm chart for Kubernetes to start valkey in cluster mode with 3 master and 3 
 **Cluster Mode Activation**
 Valkey follows Redis clustering principles, which means:
 
-* Cluster mode is enabled only when `replicaCount` is set to 6 or higher
+* Cluster mode is always enabled; `replicaCount` must be 6 or higher (enforced by `values.schema.json`)
 
 This minimum of 6 nodes typically represents:
 
@@ -73,7 +73,7 @@ This minimum of 6 nodes typically represents:
 | podSecurityContext.fsGroup | int | `1000` |  |
 | podSecurityContext.runAsGroup | int | `1000` |  |
 | podSecurityContext.runAsUser | int | `1000` |  |
-| replicaCount | int | `6` |  |
+| replicaCount | int | `6` | Number of Valkey pods. Minimum 6 (3 primaries + 3 replicas), enforced by `values.schema.json`. |
 | resources | object | `{}` |  |
 | securityContext.capabilities.drop[0] | string | `"ALL"` |  |
 | securityContext.readOnlyRootFilesystem | bool | `true` |  |

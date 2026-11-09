@@ -20,7 +20,7 @@ spec:
       protocol: TCP
       name: tcp
     - port: {{ .Values.containerPorts.bus }}
-      targetPort: bus
+      targetPort: tcp-redis-bus
       protocol: TCP
       name: bus
   selector:

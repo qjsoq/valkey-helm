@@ -10,6 +10,11 @@ metadata:
   annotations: {{- include "valkey-cluster.tplvalues.render" ( dict "value" .Values.valkeyAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
+  selector:
+    {{- /* FIX: Pass the top-level context '.' directly */}}
+    matchLabels: {{- include "valkey-cluster.selectorLabels" . | nindent 6 }}
+    matchExpressions:
+      - {key: job-name, operator: NotIn, values: [{{ template "valkey-cluster.fullname" . }}-cluster-update]}
   {{- if .Values.podDisruptionBudget }}
   {{- include "valkey-cluster.tplvalues.render" (dict "value" .Values.podDisruptionBudget "context" $) | nindent 2 }}
   {{- else }}
@@ -19,10 +24,5 @@ spec:
   {{- if or .Values.pdb.maxUnavailable (not .Values.pdb.minAvailable) }}
   maxUnavailable: {{ .Values.pdb.maxUnavailable | default 1 }}
   {{- end  }}
-  selector:
-    {{- /* FIX: Pass the top-level context '.' directly */}}
-    matchLabels: {{- include "valkey-cluster.selectorLabels" . | nindent 6 }}
-    matchExpressions:
-      - {key: job-name, operator: NotIn, values: [{{ template "valkey-cluster.fullname" . }}-cluster-update]}
   {{- end }}
 {{- end }}

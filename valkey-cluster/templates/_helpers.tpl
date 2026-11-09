@@ -57,7 +57,7 @@ It combines the values from `.Values.metrics.image` with global settings
 (like `.Values.global.imageRegistry`) to create a complete, pullable image name.
 */}}
 {{- define "valkey-cluster.metrics.image" -}}
-{{ include "valkey-cluster.images.image" (dict "imageRoot" .Values.metrics.image "global" .Values.global) }}
+{{- include "valkey-cluster.images.image" (dict "imageRoot" .Values.metrics.image "global" .Values.global) -}}
 {{- end -}}
 
 {{/*
@@ -65,12 +65,16 @@ Generates a complete and pullable container image name.
 
 This helper function constructs the full image identifier by combining a registry, repository, and a tag or digest. It uses a specific order of precedence to determine the final name:
 
-1.  **Registry:** Uses the `image.registry` value if provided; otherwise, it falls back to `global.imageRegistry`.
+1.  **Registry:** Uses `global.imageRegistry` when it is set, so a single global override can
+    redirect every image at once (air-gapped mirrors). Falls back to `image.registry`, and
+    emits no registry prefix when both are empty.
 2.  **Repository:** Uses the `image.repository` value.
 3.  **Termination (Tag/Digest Priority):**
     - If `image.digest` is set, it's used with an '@' separator (e.g., `... @sha256:...`).
     - If `image.digest` is not set but `image.tag` is, the tag is used with a ':' separator (e.g., `... :1.2.3`).
-    - If neither is set, it falls back to using the chart's `.Chart.AppVersion` as the tag.
+    - If neither is set, it falls back to `.Chart.AppVersion` -- but ONLY when the caller
+      passes a `chart` key. Callers that omit it (e.g. `valkey-cluster.metrics.image`) emit a
+      bare trailing ':' for an empty tag, which is invalid YAML.
 
 Example Usage:
 {{ include "valkey-cluster.images.image" ( dict "imageRoot" .Values.myApp.image "global" .Values.global "chart" .Chart ) }}
@@ -101,7 +105,9 @@ Example Usage:
 Generate Valkey configuration.
 - Renders the base config from .Values.valkeyConfig.
 - If auth is enabled, it appends the 'requirepass' and 'masterauth' lines.
-- If replicaCount > 1, it appends cluster settings using ports from .Values.containerPorts.
+- Always appends cluster settings using ports from .Values.containerPorts.
+  The chart requires replicaCount >= 6 (enforced by values.schema.json), so cluster
+  mode is unconditional.
 */}}
 {{- define "valkey-cluster.generateConfig" -}}
 {{- $useAuth := false -}}
@@ -116,12 +122,10 @@ masterauth {dynamically-substituted-dont-change-manually}
 requirepass {dynamically-substituted-dont-change-manually}
 protected-mode yes
 {{- end }}
-{{- if gt (int .Values.replicaCount) 1 }}
 cluster-enabled yes
 cluster-config-file nodes.conf
 cluster-preferred-endpoint-type ip
 port {{ .Values.containerPorts.valkey }}
-{{- end }}
 {{- end -}}
 
 {{/*
@@ -226,3 +230,13 @@ Creating Image Pull Secrets
 {{- end }}
 {{- end }}
 
+
+{{/*
+Generates the full image name for the Valkey container (main and init).
+
+Honours image.registry, global.imageRegistry, image.digest and image.tag,
+falling back to .Chart.AppVersion when no tag is set.
+*/}}
+{{- define "valkey-cluster.image" -}}
+{{- include "valkey-cluster.images.image" (dict "imageRoot" .Values.image "global" .Values.global "chart" .Chart) -}}
+{{- end -}}

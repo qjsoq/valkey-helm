@@ -2,10 +2,8 @@
 set -e
 
 # --- Configuration & Initial Checks ---
-if [ "${REPLICAS}" -eq "1" ]; then
-    echo "Single node deployment. Skipping cluster initialization"
-    exit 0
-fi
+# The chart requires replicaCount >= 6 (values.schema.json), so cluster
+# initialization always runs.
 
 ORDINAL=$(echo "${HOSTNAME}" | rev | cut -d'-' -f1 | rev)
 PRIMARIES=$(( (REPLICAS + 1) / 2 ))

@@ -1,7 +1,9 @@
 {{- $fullname := include "valkey-cluster.fullname" . }}
 {{- $storage := .Values.dataStorage }}
 {{- $useExistingPVC := and $storage.enabled (not (empty $storage.persistentVolumeClaimName)) }}
-{{- $createPVC := and $storage.enabled (not (empty $storage.requestedSize)) (empty $storage.persistentVolumeClaimName) }}{{- $useConfigMap := or (not (empty .Values.valkeyConfig | default "")) (gt (int .Values.replicaCount) 1) -}}
+{{- $createPVC := and $storage.enabled (not (empty $storage.requestedSize)) (empty $storage.persistentVolumeClaimName) }}{{- /* Cluster mode is unconditional (replicaCount >= 6 enforced by schema), so the
+       generated valkey.conf is always needed. */ -}}
+{{- $useConfigMap := true -}}
 {{- $configFile := "/data/conf/valkey.conf" -}}
 
 apiVersion: apps/v1
@@ -42,7 +44,7 @@ spec:
       
       initContainers:
         - name: {{ .Chart.Name }}-init
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "valkey-cluster.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- with .Values.securityContext }}
           securityContext:
@@ -74,7 +76,7 @@ spec:
 
       containers:
         - name: {{ include "valkey-cluster.fullname" . }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "valkey-cluster.image" . }}
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -86,7 +88,6 @@ spec:
               sed -i "s|{dynamically-substituted-dont-change-manually}|${VALKEY_PASSWORD}|g" {{ $configFile }}
               {{- end }}
 
-              {{- if gt (int .Values.replicaCount) 5 }}
               echo "\ncluster-announce-ip ${POD_IP}" >> {{ $configFile }}
               # Announce a STABLE per-pod hostname (headless-service FQDN) so the cluster
               # can re-establish bus connections after pod IPs change on restart. Without
@@ -97,7 +98,6 @@ spec:
               {{- end }}
               {{- if .Values.clusterStableAddressing.preferHostnameEndpoint }}
               echo "\ncluster-preferred-endpoint-type hostname" >> {{ $configFile }}
-              {{- end }}
               {{- end }}
 
               /cluster-script/init-cluster.sh &
@@ -202,7 +202,7 @@ spec:
             - name: REDIS_EXPORTER_IS_CLUSTER
               value: "true"
             - name: REDIS_ADDR
-              value: {{ printf "%s://127.0.0.1:%g" (ternary "rediss" "redis" .Values.tls.enabled) .Values.containerPorts.valkey | quote }}
+              value: {{ printf "%s://127.0.0.1:%v" (ternary "rediss" "redis" .Values.tls.enabled) .Values.containerPorts.valkey | quote }}
             {{- if and .Values.existingSecret .Values.existingSecretPasswordKey }}
             - name: REDIS_PASSWORD
               valueFrom:
@@ -296,7 +296,7 @@ spec:
     - metadata:
         name: {{ .Values.dataStorage.volumeName }}
         labels:
-          {{- include "valkey-cluster.labels" . | nindent 10 }}
+          {{- include "valkey-cluster.selectorLabels" . | nindent 10 }}
           {{- with .Values.dataStorage.labels }}
           {{- toYaml . | nindent 10 }}
           {{- end }}

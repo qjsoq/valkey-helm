@@ -52,7 +52,7 @@ tests:
           path: spec.ports
           content:
             port: 16379
-            targetPort: bus
+            targetPort: tcp-redis-bus
             protocol: TCP
             name: bus
 
@@ -72,7 +72,7 @@ tests:
           path: spec.ports
           content:
             port: 16380
-            targetPort: bus
+            targetPort: tcp-redis-bus
             protocol: TCP
             name: bus
 
