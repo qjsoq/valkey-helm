@@ -9,6 +9,8 @@ sources:
   - https://github.com/valkey-io/valkey-helm.git
   - https://valkey.io
 maintainers:
+  - name: Dmytro Artamonov
+    url: https://github.com/qjsoq
   - name: raven
     url: https://github.com/mk-raven
 icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/valkey/img/valkey-stack-220x234.png

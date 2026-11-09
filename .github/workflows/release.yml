@@ -1,48 +1,13 @@
 name: Release Charts
 
+# Manual only. This is a fork of valkey-io/valkey-helm and it exists to maintain
+# the valkey-cluster chart; the valkey, valkey-operator and valkey-resources
+# charts belong to upstream and must never be republished from here.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'valkey/Chart.yaml'
-      - 'valkey-operator/Chart.yaml'
-      - 'valkey-resources/Chart.yaml'
 
 jobs:
-  check-version-change:
-    runs-on: ubuntu-latest
-    outputs:
-      version_changed: ${{ steps.check.outputs.version_changed }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # Need at least 2 commits to compare
-
-      - name: Check if version changed
-        id: check
-        run: |
-          version_changed=false
-
-          for chart in valkey valkey-operator valkey-resources; do
-            CURRENT_VERSION=$(grep '^version:' ${chart}/Chart.yaml | awk '{print $2}')
-            PREVIOUS_VERSION=$(git show HEAD~1:${chart}/Chart.yaml 2>/dev/null | grep '^version:' | awk '{print $2}')
-
-            echo "${chart}: current=${CURRENT_VERSION} previous=${PREVIOUS_VERSION}"
-
-            if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
-              echo "Version changed for ${chart}: ${PREVIOUS_VERSION} -> ${CURRENT_VERSION}"
-              version_changed=true
-            fi
-          done
-
-          echo "version_changed=${version_changed}" >> $GITHUB_OUTPUT
-
   release:
-    needs: check-version-change
-    if: needs.check-version-change.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       packages: write
@@ -65,10 +30,17 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
+      - name: Package valkey-cluster only
+        run: |
+          mkdir -p .cr-release-packages
+          helm package valkey-cluster --destination .cr-release-packages
+          ls -l .cr-release-packages
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
         with:
           charts_dir: .
+          skip_packaging: true
           skip_existing: true
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
