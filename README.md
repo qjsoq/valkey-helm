@@ -2,11 +2,9 @@
 
 Helm charts for Valkey on Kubernetes.
 
-This repository is a fork of [valkey-io/valkey-helm](https://github.com/valkey-io/valkey-helm).
-It exists to maintain **`valkey-cluster`**, an operator-free chart for Valkey in cluster
-mode. Upstream supports only standalone and sentinel modes and has declined to take
-cluster-mode support, so the chart lives here until the Valkey operator is production
-ready. The other three charts are upstream's and are carried unchanged.
+Fork of [valkey-io/valkey-helm](https://github.com/valkey-io/valkey-helm). The
+`valkey-cluster` chart is maintained here. The other three are upstream's, carried
+unchanged.
 
 | Chart | Description | Maintained here |
 |---|---|---|
@@ -31,23 +29,21 @@ Or from a checkout of this repository:
 helm install valkey-cluster ./valkey-cluster -f my-values.yaml
 ```
 
-The upstream charts are not published from this fork. Install them from
-[upstream](https://github.com/valkey-io/valkey-helm) instead.
+The upstream charts are not published from this fork.
 
 ---
 
 ## Prerequisites
 
 * Kubernetes 1.20+
-* Helm 3.8+ (3.8 is where OCI registry support became stable; 3.5+ is enough if you
-  install from a checkout)
+* Helm 3.8+ for `oci://` installs, 3.5+ for installs from a checkout
 
 ---
 
 ## valkey-cluster
 
-Deploys a Valkey cluster as a StatefulSet, with no operator and no sidecar controller.
-Cluster formation and recovery are handled by init and lifecycle scripts in the chart.
+Deploys a Valkey cluster as a StatefulSet. No operator, no sidecar controller. Cluster
+formation and recovery run from init and lifecycle scripts in the chart.
 
 * 6 nodes minimum — 3 primaries and 3 replicas. Enforced by `values.schema.json`.
 * Data sharded across primaries, each with one replica.
@@ -60,8 +56,8 @@ Values are validated against [`valkey-cluster/values.schema.json`](valkey-cluste
 
 ### Publishing a new version
 
-Bump `version` in `valkey-cluster/Chart.yaml` first. Registry tags are mutable, so
-re-pushing an existing version replaces it silently.
+Bump `version` in `valkey-cluster/Chart.yaml` first. Registry tags are mutable; pushing
+an existing version overwrites it.
 
 ```bash
 gh auth refresh -h github.com -s write:packages
@@ -83,9 +79,8 @@ just validate    # lint + test
 just package     # helm package, all charts
 ```
 
-`just` is the [casey/just](https://github.com/casey/just) command runner, not a Helm
-feature. Unit tests need the [helm-unittest](https://github.com/helm-unittest/helm-unittest)
-plugin.
+Requires [casey/just](https://github.com/casey/just) and the
+[helm-unittest](https://github.com/helm-unittest/helm-unittest) Helm plugin.
 
 ---
 
@@ -111,10 +106,9 @@ plugin.
 
 ## Slack
 
-Upstream feedback and discussion: the
-[#valkey-helm](https://valkey-oss-developer.slack.com/archives/C09JZ6N2AAV) channel in the
-Valkey OSS Developer Slack. Note that cluster-mode questions about this fork belong here,
-not upstream.
+Upstream discussion:
+[#valkey-helm](https://valkey-oss-developer.slack.com/archives/C09JZ6N2AAV) in the Valkey
+OSS Developer Slack.
 
 ---
 
