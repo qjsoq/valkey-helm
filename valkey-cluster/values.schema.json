@@ -311,6 +311,33 @@
         },
         "valkeyLogLevel": {
             "type": "string"
+        },
+        "readinessProbe": {
+            "type": "object",
+            "description": "Readiness probe timings. The exec command is fixed by the chart.",
+            "properties": {
+                "initialDelaySeconds": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "periodSeconds": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "timeoutSeconds": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "failureThreshold": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "successThreshold": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "additionalProperties": false
         }
     }
 }

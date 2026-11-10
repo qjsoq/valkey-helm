@@ -157,12 +157,7 @@ spec:
               command:
                 - /bin/sh
                 - /scripts/ping_readiness_local.sh
-            
-            initialDelaySeconds: 15
-            periodSeconds: 5
-            timeoutSeconds: 6
-            failureThreshold: 10
-            successThreshold: 1
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
