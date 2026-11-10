@@ -1,91 +1,120 @@
-# valkey Helm Chart
+# Valkey Helm Charts
 
 Helm charts for Valkey on Kubernetes.
 
-| Chart | Description |
-|---|---|
-| [valkey](valkey/) | Standalone / replication without operator |
-| [valkey-operator](valkey-operator/) | Installs the valkey-operator |
-| [valkey-resources](valkey-resources/) | Operator managed CRs (ValkeyCluster) |
+This repository is a fork of [valkey-io/valkey-helm](https://github.com/valkey-io/valkey-helm).
+It exists to maintain **`valkey-cluster`**, an operator-free chart for Valkey in cluster
+mode. Upstream supports only standalone and sentinel modes and has declined to take
+cluster-mode support, so the chart lives here until the Valkey operator is production
+ready. The other three charts are upstream's and are carried unchanged.
+
+| Chart | Description | Maintained here |
+|---|---|---|
+| [valkey-cluster](valkey-cluster/) | Cluster mode without an operator | **yes** |
+| [valkey](valkey/) | Standalone / replication without an operator | no, upstream |
+| [valkey-operator](valkey-operator/) | Installs the valkey-operator | no, upstream |
+| [valkey-resources](valkey-resources/) | Operator-managed CRs (ValkeyCluster) | no, upstream |
 
 ---
 
 ## TL;DR
 
-```bash
-helm repo add valkey https://valkey.io/valkey-helm/
-helm install valkey valkey/valkey
-```
-
-Operator managed cluster:
+`valkey-cluster` is published to GitHub Container Registry:
 
 ```bash
-helm install valkey-operator valkey/valkey-operator -n valkey-operator-system --create-namespace
-helm install my-cluster valkey/valkey-resources -n valkey
+helm install valkey-cluster oci://ghcr.io/thingsboard/valkey-cluster --version 0.11.0
 ```
 
----
-
-## Introduction
-
-These charts bootstrap Valkey using the Helm package manager.
-
----
-## Deployment Options
-
-### Standalone Mode
-The chart deploys Valkey in standalone mode.
-
-### Cluster Mode
-To deploy Valkey in cluster mode for availability and scalability, use the following options:
-
-#### Using Local Chart Files
-To deploy the cluster mode using the local chart files:
-
-```bash
-# Navigate to the directory containing the chart
-cd ./valkey-helm
-
-# Install the chart from local files
-helm install valkey-cluster ./valkey-cluster
-```
-
-#### Configuration
-You can customize the installation by providing values:
+Or from a checkout of this repository:
 
 ```bash
 helm install valkey-cluster ./valkey-cluster -f my-values.yaml
 ```
 
-Cluster mode features:
-- Automatic deployment of 3 master nodes and 3 replica nodes (minimum 6 nodes)
-- Master-replica replication for data redundancy
-- Automatic failover if a master node becomes unavailable
-- Data sharding across multiple master nodes
+The upstream charts are not published from this fork. Install them from
+[upstream](https://github.com/valkey-io/valkey-helm) instead.
 
 ---
 
 ## Prerequisites
 
 * Kubernetes 1.20+
-* Helm 3.5+
+* Helm 3.8+ (3.8 is where OCI registry support became stable; 3.5+ is enough if you
+  install from a checkout)
+
+---
+
+## valkey-cluster
+
+Deploys a Valkey cluster as a StatefulSet, with no operator and no sidecar controller.
+Cluster formation and recovery are handled by init and lifecycle scripts in the chart.
+
+* 6 nodes minimum — 3 primaries and 3 replicas. Enforced by `values.schema.json`.
+* Data sharded across primaries, each with one replica.
+* Automatic failover when a primary becomes unavailable.
+* Stable per-pod hostnames so the cluster bus reconnects after pod IPs change.
+* Optional metrics via `redis_exporter`.
+
+Configuration reference: [`valkey-cluster/values.yaml`](valkey-cluster/values.yaml).
+Values are validated against [`valkey-cluster/values.schema.json`](valkey-cluster/values.schema.json).
+
+### Publishing a new version
+
+Bump `version` in `valkey-cluster/Chart.yaml` first. Registry tags are mutable, so
+re-pushing an existing version replaces it silently.
+
+```bash
+gh auth refresh -h github.com -s write:packages
+echo "$(gh auth token)" | helm registry login ghcr.io -u <github-login> --password-stdin
+helm package valkey-cluster
+helm push valkey-cluster-<version>.tgz oci://ghcr.io/thingsboard
+```
+
+Push access follows write access to this repository.
+
+---
+
+## Development
+
+```bash
+just test        # helm unittest, all charts
+just lint        # helm lint, all charts
+just validate    # lint + test
+just package     # helm package, all charts
+```
+
+`just` is the [casey/just](https://github.com/casey/just) command runner, not a Helm
+feature. Unit tests need the [helm-unittest](https://github.com/helm-unittest/helm-unittest)
+plugin.
 
 ---
 
 ## Maintainers
 
-| Name     | Email         |
-| -------- | ------------- |
+### valkey-cluster
+
+| Name | GitHub |
+| --- | --- |
+| Dmytro Artamonov | [@qjsoq](https://github.com/qjsoq) |
+| Volodymyr Babak | [@volodymyr-babak](https://github.com/volodymyr-babak) |
+
+### Upstream charts
+
+| Name | Email |
+| --- | --- |
 | mk-raven | maikebit at gmail.com |
-| sgissi   | silvio at gissilabs.com |
-| jdheyburn   | joseph.heyburn at braze.com |
-| Bloodraven21   | ishanij10115 at gmail.com |
+| sgissi | silvio at gissilabs.com |
+| jdheyburn | joseph.heyburn at braze.com |
+| Bloodraven21 | ishanij10115 at gmail.com |
 
 ---
 
 ## Slack
 
-You can also provide feedback or join the conversation with other developers, users, and contributors on the #[Valkey-helm](https://valkey-oss-developer.slack.com/archives/C09JZ6N2AAV) Slack channel.
+Upstream feedback and discussion: the
+[#valkey-helm](https://valkey-oss-developer.slack.com/archives/C09JZ6N2AAV) channel in the
+Valkey OSS Developer Slack. Note that cluster-mode questions about this fork belong here,
+not upstream.
 
 ---
 
